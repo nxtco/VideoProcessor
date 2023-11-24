@@ -13,22 +13,22 @@ namespace VideoProcessor
     {
         [FunctionName(nameof(ProcessVideoStarter))]
         public static async Task<IActionResult> ProcessVideoStarter(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req,
+        [DurableClient] IDurableOrchestrationClient starter,
+        ILogger log)
         {
             string video = req.GetQueryParameterDictionary()["video"];
 
             if (video == null)
             {
                 return new BadRequestObjectResult(
-                    "Please pass the video location the query string");
+                   "Please pass the video location the query string");
             }
 
             // Function input comes from the request content.
             string instanceId = await starter.StartNewAsync("ProcessVideoOrchestrator", null, video);
 
-            log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
+            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
 
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
