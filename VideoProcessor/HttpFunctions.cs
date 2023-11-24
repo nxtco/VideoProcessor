@@ -11,7 +11,7 @@ namespace VideoProcessor
 {
     public static class HttpFunctions
     {
-        [FunctionName(nameof(ProcessVideoStarter)]
+        [FunctionName(nameof(ProcessVideoStarter))]
         public static async Task<IActionResult> ProcessVideoStarter(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req,
             [DurableClient] IDurableOrchestrationClient starter,
