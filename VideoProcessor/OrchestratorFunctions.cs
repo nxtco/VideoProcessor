@@ -19,6 +19,7 @@ namespace VideoProcessor
             string transcodedLocation = null;
             string thumbnailLocation = null;
             string withIntroLocation = null;
+            var approvalResult = "Unknown";
 
             try
             {
@@ -35,6 +36,31 @@ namespace VideoProcessor
 
                 log.LogInformation("about to call prepend intro activity");
                 withIntroLocation = await context.CallActivityAsync<string>("PrependIntro", transcodedLocation);
+
+                await context.CallActivityAsync("SendApprovalRequestEmail", new ApprovalInfo()
+                {
+                    OrchestrationId = context.InstanceId,
+                    VideoLocation = withIntroLocation
+                });
+
+                try
+                {
+                    approvalResult = await context.WaitForExternalEvent<string>("ApprovalResult", TimeSpan.FromSeconds(30));
+                }
+                catch (TimeoutException)
+                {
+                    log.LogWarning("Timed out waiting for approval");
+                    approvalResult = "Timed Out";
+                }
+
+                if (approvalResult == "Approved")
+                {
+                    await context.CallActivityAsync("PublishVideo", withIntroLocation);
+                }
+                else
+                {
+                    await context.CallActivityAsync("RejectVideo", withIntroLocation);
+                }
             }
             catch (Exception e)
             {
@@ -52,7 +78,8 @@ namespace VideoProcessor
             {
                 Transcoded = transcodedLocation,
                 Thumbnail = thumbnailLocation,
-                WithIntro = withIntroLocation
+                WithIntro = withIntroLocation,
+                ApprovalResult = approvalResult
             };
         }
 

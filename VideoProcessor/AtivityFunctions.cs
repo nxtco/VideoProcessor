@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using SendGrid.Helpers.Mail;
 
 namespace VideoProcessor
 {
@@ -70,6 +71,58 @@ namespace VideoProcessor
             }
             return "Cleaned up successfully";
         }
-    }
 
+
+        [FunctionName(nameof(SendApprovalRequestEmail))]
+        public static void SendApprovalRequestEmail(
+            [ActivityTrigger] ApprovalInfo approvalInfo,
+            [SendGrid(ApiKey = "SendGridKey")] out SendGridMessage message,
+            [Table("Approvals", "AzureWebJobsStorage")] out Approval approval,
+            ILogger log)
+        {
+            var approvalCode = Guid.NewGuid().ToString("N");
+            approval = new Approval
+            {
+                PartitionKey = "Approval",
+                RowKey = approvalCode,
+                OrchestrationId = approvalInfo.OrchestrationId
+            };
+            var approverEmail = new EmailAddress(Environment.GetEnvironmentVariable("ApproverEmail"));
+            var senderEmail = new EmailAddress(Environment.GetEnvironmentVariable("SenderEmail"));
+
+            log.LogInformation($"Sending approval request for {approvalInfo.VideoLocation}");
+            var host = Environment.GetEnvironmentVariable("Host");
+
+            var functionAddress = $"{host}/api/SubmitVideoApproval/{approvalCode}";
+            var approvedLink = functionAddress + "?result=Approved";
+            var rejectedLink = functionAddress + "?result=Rejected";
+            var body = $"Please review {approvalInfo.VideoLocation}<br>"
+                               + $"<a href=\"{approvedLink}\">Approve</a><br>"
+                               + $"<a href=\"{rejectedLink}\">Reject</a>";
+            message = new SendGridMessage();
+            message.Subject = "A video is awaiting approval (V2)";
+            message.From = senderEmail;
+            message.AddTo(approverEmail);
+            message.HtmlContent = body;
+            log.LogWarning(body);
+        }
+
+
+        [FunctionName(nameof(PublishVideo))]
+        public static async Task PublishVideo([ActivityTrigger] string inputVideo, ILogger log)
+        {
+            log.LogInformation($"Publishing {inputVideo}.");
+            // simulate publishing
+            await Task.Delay(1000);
+        }
+
+        [FunctionName(nameof(RejectVideo))]
+        public static async Task RejectVideo([ActivityTrigger] string inputVideo, ILogger log)
+        {
+            log.LogInformation($"Rejecting {inputVideo}.");
+            // simulate performing reject actions
+            await Task.Delay(1000);
+        }
+
+    }
 }

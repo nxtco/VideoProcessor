@@ -1,0 +1,12 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "TranscodeBitRates": "1010,2020,3030",
+        "SendGridKey": "SG.your.sendgrid.secret.key.X7142Q921",
+        "ApproverEmail": "approver@example.com",
+        "SenderEmail": "sender@example.com",
+        "Host": "http://localhost:7071",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet"
+    }
+}
