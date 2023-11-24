@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -15,14 +16,30 @@ namespace VideoProcessor
             log = context.CreateReplaySafeLogger(log);
             var videoLocation = context.GetInput<string>();
 
-            log.LogInformation("about to call transcode video activity");
-            var transcodedLocation = await context.CallActivityAsync<string>("TranscodeVideo", videoLocation);
+            string transcodedLocation = null;
+            string thumbnailLocation = null;
+            string withIntroLocation = null;
 
-            log.LogInformation("about to call extract thumbnail activity");
-            var thumbnailLocation = await context.CallActivityAsync<string>("ExtractThumbnail", transcodedLocation);
+            try
+            {
+                transcodedLocation = await context.CallActivityAsync<string>("TranscodeVideo", videoLocation);
+                log.LogInformation("about to call extract thumbnail activity");
+                thumbnailLocation = await context.CallActivityAsync<string>("ExtractThumbnail", transcodedLocation);
 
-            log.LogInformation("about to call prepend intro activity");
-            var withIntroLocation = await context.CallActivityAsync<string>("PrependIntro", transcodedLocation);
+                log.LogInformation("about to call prepend intro activity");
+                withIntroLocation = await context.CallActivityAsync<string>("PrependIntro", transcodedLocation);
+            }
+            catch (Exception e)
+            {
+                log.LogError($"Caught an error from an activity: {e.Message}");
+
+                await context.CallActivityAsync<string>("Cleanup", new[] { transcodedLocation, thumbnailLocation, withIntroLocation });
+                return new
+                {
+                    Error = "Failed to process uploaded video",
+                    Message = e.Message
+                };
+            }
 
             return new
             {

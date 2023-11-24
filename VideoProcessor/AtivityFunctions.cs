@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -22,6 +23,11 @@ namespace VideoProcessor
         public static async Task<string> ExtractThumbnail([ActivityTrigger] string inputVideo, ILogger log)
         {
             log.LogInformation($"Extracting Thumbnail {inputVideo}.");
+            if (inputVideo.Contains("error"))
+            {
+                throw new InvalidOperationException("Failed to extract thumbnail");
+            }
+
             // simulate doing the activity
             await Task.Delay(5000);
             return $"{Path.GetFileNameWithoutExtension(inputVideo)}-thumbnail.png";
@@ -36,6 +42,19 @@ namespace VideoProcessor
             // simulate doing the activity
             await Task.Delay(5000);
             return $"{Path.GetFileNameWithoutExtension(inputVideo)}-withintro.mp4";
+        }
+
+        [FunctionName(nameof(Cleanup))]
+        public static async Task<string> Cleanup([ActivityTrigger] string[] filesToCleanUp, ILogger log)
+        {
+            foreach(var file in filesToCleanUp.Where(f => f != null))
+            {
+                log.LogInformation($"Deleting {file}");
+
+                // simulate doing the activity
+                await Task.Delay(1000);
+            }
+            return "Cleaned up successfully";
         }
     }
 
